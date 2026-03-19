@@ -1,8 +1,20 @@
-# bike_parts
+# pystl
 
-Adventures in parameterized 3D printing with [SolidPython2](https://github.com/jeff-dh/SolidPython) (the actively maintained V2 fork).
+PYthon STL generation using [SolidPython2](https://github.com/jeff-dh/SolidPython).
 
-Each part is a Python dataclass — tweak a number, re-run, get a new STL. No OpenSCAD editor required.
+Library parts are defined as Python dataclasses with a `build()` method that
+returns an `OpenSCADObject`. Library parts can be composed together or combined
+with custom code before being emitted as a `.scad` and/or `.stl` file.
+
+The library comes with a few pre-defined parts.  If you find yourself repeatedly
+using custom code, you can create a new Python dataclass for future use.
+
+The usual workflow is to:
+* copy `scripts/boilerplate.py` to `scripts/my_custom_part.py`
+* Edit `scripts/my_custom_part.py`, implementing `build()` and adding
+argparse parameters for your part as needed
+* run `uv run python scripts/my_custom_part.py` with appropriate command line 
+arguments to generate .scad and .stl files
 
 ## One-time setup
 
@@ -10,34 +22,30 @@ Requires Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone <repo>
-cd bike_parts
-uv sync
+cd pystl
+uv sync           # initilize the required packagers
 ```
 
-STL export requires the [OpenSCAD](https://openscad.org/downloads.html) CLI to be in `PATH`. Without it, `render.py` writes `.scad` files only and logs a warning.
+STL export requires the [OpenSCAD](https://openscad.org/downloads.html) CLI to 
+be in `PATH`.  
 
 ## Render parts
 
 ```bash
-# Render all parts to output/
-uv run python render.py
+# Render with defaults
+uv run python scripts/example_bracket.py
 
-# Render a single part
-uv run python render.py --part ExampleBracket
+# Render with parameter overrides
+uv run python scripts/example_bracket.py --height=20 --width=25
 
-# Override parameters on the command line
-uv run python render.py --part GeneralPipeClamp --inner_diameter=25 --tab_depth=12
+# Write output to a custom directory
+uv run python scripts/example_bracket.py --outdir /tmp/prints
 
-# See all available parameters for a part
-uv run python render.py --part GeneralPipeClamp --help
-
-# Custom output directory
-uv run python render.py --output /tmp/prints
+# See all available parameters
+uv run python scripts/example_bracket.py --help
 ```
 
-When `--part` is given, every dataclass field on that part becomes a CLI flag. Omitted flags use the class defaults.
-
-Output files land in `output/` (gitignored):
+By default, output files land in `output/` (gitignored):
 
 ```
 output/
@@ -47,35 +55,28 @@ output/
 
 ## Adding a new part
 
-1. Create `src/bike_parts/parts/<name>.py`:
+1. Copy the boilerplate:
 
-```python
-from dataclasses import dataclass
-from solid2 import cube
-from solid2.core.object_base import OpenSCADObject
-from bike_parts.base import Part
+   ```bash
+   cp scripts/boilerplate.py scripts/my_custom_part.py
+   ```
 
-@dataclass
-class MyPart(Part):
-    width: float = 30.0
-
-    def build(self) -> OpenSCADObject:
-        return cube([self.width, self.width, self.width])
-```
-
-2. Register it in `src/bike_parts/parts/__init__.py`:
-
-```python
-from bike_parts.parts.my_part import MyPart
-
-ALL_PARTS: list[type] = [ExampleBracket, MyPart]
-```
+2. Edit `scripts/my_custom_part.py`:
+   - Rename `MyCustomPart` to your class name (update the argparse description too)
+   - Add `@dataclass` fields for your parameters (each becomes a CLI flag automatically)
+   - Implement `build()` — compose library parts from `src/pystl/library/` and/or raw
+     SolidPython2 primitives into your final assembly
+   - Add extra argparse flags in `main()` if needed beyond the auto-generated ones
 
 3. Render and verify:
 
-```bash
-uv run python render.py --part MyPart
-```
+   ```bash
+   uv run python scripts/my_custom_part.py
+   uv run python scripts/my_custom_part.py --help   # inspect available flags
+   ```
+
+> **Tip:** A `scripts/new_part.py` generator is planned that will scaffold the boilerplate
+> automatically: `uv run python scripts/new_part.py MyCustomPart`
 
 ## Viewing parts
 
@@ -98,7 +99,8 @@ openscad output/ExampleBracket.scad
 & "C:\Program Files\OpenSCAD\openscad.exe" output\ExampleBracket.scad
 ```
 
-The `.stl` files can be opened directly in any slicer (PrusaSlicer, Bambu Studio, Cura, etc.).
+The `.stl` files can be viewed in any .stl viewer and opened directly in any 
+slicer (PrusaSlicer, Bambu Studio, Cura, etc.).
 
 ## SolidPython2 API reference
 
@@ -119,13 +121,19 @@ uv run mypy src/                     # type check
 ## Project structure
 
 ```
-src/bike_parts/
-  base.py          — Part base class (build + render)
-  parts/
-    __init__.py            — ALL_PARTS registry
-    example.py             — ExampleBracket (starter part)
-    general_pipe_clamp.py  — GeneralPipeClamp + Top/Bottom split variants
-render.py          — CLI render script (auto-exposes dataclass fields as flags)
+src/pystl/
+  py_stl_base.py   — PyStlPart base class (build + render)
+  cli.py           — shared argparse/logging helpers used by all scripts
+  library/         — reusable sub-parts
+    __init__.py
+    general_pipe_clamp.py
+    filleted_rect.py
+    …
+scripts/
+  boilerplate.py           — template: copy this to create a new part script
+  example_bracket.py       — example custom part
+  new_part.py              — (planned) scaffold a new part script from boilerplate
+  …
 tests/             — pytest suite
 output/            — generated .scad and .stl (gitignored)
 ```

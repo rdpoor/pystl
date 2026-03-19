@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Parameterized 3D printing of parts using [pythonopenscad](https://github.com/owebeeone/pythonopenscad), a Python library that generates OpenSCAD models programmatically.
+Parameterized 3D printing of parts using [SolidPython2](https://github.com/jeff-dh/SolidPython), a Python library that generates OpenSCAD models programmatically.
 
 ## Tooling
 
@@ -14,29 +14,34 @@ Parameterized 3D printing of parts using [pythonopenscad](https://github.com/owe
 - **Package manager:** uv
 
 ```bash
-uv sync                                            # install deps
-uv run python render.py                            # render all parts
-uv run python render.py --part ExampleBracket      # render one part
-uv run python render.py --output /tmp/out          # custom output dir
-uv run pytest                                      # run all tests
-uv run pytest tests/test_example.py::test_build_returns_poscbase  # run one test
-uv run ruff check . && uv run ruff format .        # lint + format
-uv run mypy src/                                   # type check
+uv sync                                                  # install deps
+uv run python scripts/boilerplate.py                     # render example (MyCustomPart cube)
+uv run python scripts/boilerplate.py --help              # show available parameters
+uv run pytest                                            # run all tests
+uv run ruff check . && uv run ruff format .              # lint + format
+uv run mypy src/                                         # type check
 ```
 
 ## Architecture Notes
 
-The expected pattern for pythonopenscad projects:
+The expected pattern for SolidPython2 projects:
 
-- Python scripts define parametric part models using pythonopenscad primitives
-- Models are rendered to `.scad` files (OpenSCAD source) and `.stl` via `manifold3d`/`M3dRenderer`
-- Parameters are `@dataclass` fields on a subclass of `Part` (see `src/bike_parts/base.py`)
+- `scripts/<my_part>.py` — each custom part is a self-contained script; copy from `scripts/boilerplate.py`
+- Parameters are `@dataclass` fields on a `PyStlPart` subclass; every field becomes a CLI flag automatically
+- `build() -> OpenSCADObject` is the method subclasses implement; the inherited `render(output_dir)` writes `.scad` and (if `openscad` is in PATH) `.stl`
+- `MyCustomPart.build()` typically composes reusable sub-parts from `src/pystl/library/`
 
-### Adding a New Part
+### Adding a Library Sub-part
 
-1. Create `src/bike_parts/parts/<part_name>.py` with a `@dataclass` subclassing `Part` and implementing `build() -> PoscBase`
-2. Import it in `src/bike_parts/parts/__init__.py` and add to `ALL_PARTS`
-3. Run `uv run python render.py --part <ClassName>` to verify it renders
+1. Create `src/pystl/library/<part_name>.py` with a `@dataclass` subclassing `PyStlPart` and implementing `build() -> OpenSCADObject`
+2. Import it in `src/pystl/library/__init__.py`
+
+### Adding a Custom Part Script
+
+1. Copy `scripts/boilerplate.py` to `scripts/<my_part>.py`
+2. Rename `MyCustomPart`, implement `build()` (composing library sub-parts as needed), and extend argparse in `main()` if required
+3. Run `uv run python scripts/<my_part>.py` to render
+4. Run `uv run python scripts/test_library_part.py --part <ClassName>` to run a quick render smoke-test
 
 ## Development guidelines for python-based projects
 

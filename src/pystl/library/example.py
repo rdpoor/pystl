@@ -1,4 +1,4 @@
-"""Example bracket part demonstrating the Part pattern."""
+"""Example bracket part demonstrating the PyStlPart pattern."""
 
 import logging
 from dataclasses import dataclass
@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from solid2 import cube, cylinder
 from solid2.core.object_base import OpenSCADObject
 
-from bike_parts.base import Part
+from pystl.py_stl_base import PyStlPart
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
-class ExampleBracket(Part):
+class ExampleBracket(PyStlPart):
     """A simple L-bracket example demonstrating the Part pattern.
 
     Attributes:

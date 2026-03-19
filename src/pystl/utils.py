@@ -1,4 +1,4 @@
-"""Geometry utilities for bike_parts models."""
+"""Geometry utilities for pystl models."""
 
 from solid2 import cube
 from solid2.core.object_base import OpenSCADObject

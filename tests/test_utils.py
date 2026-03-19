@@ -3,7 +3,7 @@
 from solid2 import cube
 from solid2.core.object_base import OpenSCADObject
 
-from bike_parts.utils import split_at_y
+from pystl.utils import split_at_y
 
 
 def test_split_at_y_returns_two_openscadobjects() -> None:

@@ -1,13 +1,10 @@
-"""Tests for GeneralPipeClamp and its split variants."""
+"""Tests for GeneralPipeClamp."""
 
-import pytest
+from pathlib import Path
+
 from solid2.core.object_base import OpenSCADObject
 
-from bike_parts.parts.general_pipe_clamp import (
-    GeneralPipeClamp,
-    GeneralPipeClampBottom,
-    GeneralPipeClampTop,
-)
+from pystl.library.general_pipe_clamp import GeneralPipeClamp
 
 
 def test_build_defaults() -> None:
@@ -22,20 +19,7 @@ def test_build_custom_params() -> None:
     assert isinstance(result, OpenSCADObject)
 
 
-def test_top_bottom_inherit_params() -> None:
-    """Top and Bottom pass through overridden params (e.g. inner_diameter=35)."""
-    top = GeneralPipeClampTop(inner_diameter=35.0)
-    bottom = GeneralPipeClampBottom(inner_diameter=35.0)
-
-    top_scad = top.build().as_scad()
-    bottom_scad = bottom.build().as_scad()
-
-    # inner_diameter=35 → radius=17.5 in the cylinder call
-    assert "17.5" in top_scad, f"Expected '17.5' (r=35/2) in top SCAD:\n{top_scad}"
-    assert "17.5" in bottom_scad, f"Expected '17.5' (r=35/2) in bottom SCAD:\n{bottom_scad}"
-
-
-def test_render_writes_scad(tmp_path: pytest.TempPathFactory) -> None:
+def test_render_writes_scad(tmp_path: Path) -> None:
     """render() produces a .scad file in the output directory."""
     part = GeneralPipeClamp()
     part.render(tmp_path)

@@ -3,16 +3,16 @@
 import logging
 from dataclasses import dataclass
 
-from solid2 import circle, polygon
+from solid2 import circle, linear_extrude, polygon
 from solid2.core.object_base import OpenSCADObject
 
-from bike_parts.base import Part
+from pystl.py_stl_base import PyStlPart
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
-class FilletedRect2D(Part):
+class FilletedRect2D(PyStlPart):
     """A 2D rectangle with filleted corners, centered around the origin.
 
     Attributes:
@@ -31,21 +31,29 @@ class FilletedRect2D(Part):
         Returns:
             The SolidPython2 model representing rectangle with filleted corners.
         """
-        w2 = self.width/2.0
-        h2 = self.height/2.0
+        w2 = self.width / 2.0
+        h2 = self.height / 2.0
         r = self.radius
         fillet = circle(self.radius, _fn=128)
-        south_west = fillet.translate([-w2+r, -h2+r, 0])
-        south_east = fillet.translate([w2-r, -h2+r, 0])
-        north_east = fillet.translate([w2-r, h2-r, 0])
-        north_west = fillet.translate([-w2+r, h2-r, 0])
+        south_west = fillet.translate([-w2 + r, -h2 + r, 0])
+        south_east = fillet.translate([w2 - r, -h2 + r, 0])
+        north_east = fillet.translate([w2 - r, h2 - r, 0])
+        north_west = fillet.translate([-w2 + r, h2 - r, 0])
         # body is a rectangle with clipped corners that will be overlaid
         # with the four fillets.
-        body = polygon([
-            [-w2+r, -h2], [w2-r, -h2], [w2, -h2+r], [w2, h2-r],
-            [w2-r, h2], [-w2+r, h2], [-w2, h2-r], [-w2, -h2+r],
-            [-w2+r, -h2]
-            ])
+        body = polygon(
+            [
+                [-w2 + r, -h2],
+                [w2 - r, -h2],
+                [w2, -h2 + r],
+                [w2, h2 - r],
+                [w2 - r, h2],
+                [-w2 + r, h2],
+                [-w2, h2 - r],
+                [-w2, -h2 + r],
+                [-w2 + r, -h2],
+            ]
+        )
         return body + south_west + south_east + north_east + north_west
 
 
@@ -65,13 +73,15 @@ class FilletedRect(FilletedRect2D):
         Returns:
             The SolidPython2 model representing the extruded filleted rectangle.
         """
-        from solid2 import linear_extrude
-
         return linear_extrude(self.depth)(super().build())
 
+
 @dataclass
-class FilletedFrame(Part):
-    """A 3D frame: an outer filleted rect with an inner filleted rect subtracted.
+class FilletedFrame2D(PyStlPart):
+    """A 2D frame: an outer filleted rect with an inner filleted rect subtracted.
+
+    Useful as a face-plate or panel cutout profile. Extrude with FilletedFrame
+    to produce a 3D solid.
 
     Attributes:
         outer_width: width of the outer rectangle
@@ -80,7 +90,6 @@ class FilletedFrame(Part):
         inner_width: width of the inner cutout rectangle
         inner_height: height of the inner cutout rectangle
         inner_radius: fillet radius of the inner cutout rectangle
-        depth: extrusion depth along the z-axis
     """
 
     outer_width: float = 40.0
@@ -89,24 +98,40 @@ class FilletedFrame(Part):
     inner_width: float = 30.0
     inner_height: float = 20.0
     inner_radius: float = 5.0
-    depth: float = 1.0
 
     def build(self) -> OpenSCADObject:
-        """Build the filleted frame by subtracting an inner from an outer filleted rect.
+        """Build the 2D frame profile.
 
         Returns:
-            The SolidPython2 model representing the extruded filleted frame.
+            A 2D OpenSCADObject: the outer filleted rect with the inner one subtracted.
         """
-        from solid2 import linear_extrude
-
-        outer_2d = FilletedRect2D(
+        outer = FilletedRect2D(
             width=self.outer_width,
             height=self.outer_height,
             radius=self.outer_radius,
         ).build()
-        inner_2d = FilletedRect2D(
+        cutout = FilletedRect2D(
             width=self.inner_width,
             height=self.inner_height,
             radius=self.inner_radius,
         ).build()
-        return linear_extrude(self.depth)(outer_2d - inner_2d)
+        return outer - cutout
+
+
+@dataclass
+class FilletedFrame(FilletedFrame2D):
+    """A 3D frame extruded to a given depth.
+
+    Attributes:
+        depth: extrusion depth along the z-axis
+    """
+
+    depth: float = 1.0
+
+    def build(self) -> OpenSCADObject:
+        """Build the 3D filleted frame by extruding FilletedFrame2D.
+
+        Returns:
+            The SolidPython2 model representing the extruded filleted frame.
+        """
+        return linear_extrude(self.depth)(super().build())

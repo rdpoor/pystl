@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from solid2.core.object_base import OpenSCADObject
 
-from bike_parts.parts.example import ExampleBracket
+from pystl.library.example import ExampleBracket
 
 
 def test_build_returns_openscadobject() -> None:

@@ -7,14 +7,13 @@ from dataclasses import dataclass
 from solid2 import cube, cylinder
 from solid2.core.object_base import OpenSCADObject
 
-from bike_parts.base import Part
-from bike_parts.utils import split_at_y
+from pystl.py_stl_base import PyStlPart
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
-class GeneralPipeClamp(Part):
+class GeneralPipeClamp(PyStlPart):
     """A general purpose pipe clamp with two mouting tabs.
 
     Attributes:
@@ -63,38 +62,4 @@ class GeneralPipeClamp(Part):
             [self.outer_diameter + self.tab_width * 2, self.split_gap, self.height],
             center=True,
         )
-        return ((body + tabs) - (hole + bolt_hole_l + bolt_hole_r + split_plane))
-
-
-@dataclass
-class GeneralPipeClampTop(GeneralPipeClamp):
-    """Top half (y >= 0) of a split GeneralPipeClamp.
-    Superceded by GeneralPipeClamp (which handles the split)
-    Inherits all parameters from GeneralPipeClamp.
-    """
-
-    def build(self) -> OpenSCADObject:
-        """Build the top half of the clamp.
-
-        Returns:
-            The y >= 0 half of the GeneralPipeClamp model.
-        """
-        _, top = split_at_y(super().build())
-        return top.rotate(90, 0, 0)
-
-
-@dataclass
-class GeneralPipeClampBottom(GeneralPipeClamp):
-    """Bottom half (y < 0) of a split GeneralPipeClamp.
-    Superceded by GeneralPipeClamp (which handles the split)
-    Inherits all parameters from GeneralPipeClamp.
-    """
-
-    def build(self) -> OpenSCADObject:
-        """Build the bottom half of the clamp.
-
-        Returns:
-            The y < 0 half of the GeneralPipeClamp model.
-        """
-        bottom, _ = split_at_y(super().build())
-        return bottom.rotate(-90, 0, 0)
+        return (body + tabs) - (hole + bolt_hole_l + bolt_hole_r + split_plane)

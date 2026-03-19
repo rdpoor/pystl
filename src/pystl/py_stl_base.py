@@ -1,4 +1,4 @@
-"""Base class and render utilities for bike parts."""
+"""Base class and render utilities for pystl parts."""
 
 import logging
 import shutil
@@ -12,8 +12,8 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class Part:
-    """Base class for all bike parts. Subclass and implement build()."""
+class PyStlPart:
+    """Base class for all pystl parts. Subclass and implement build()."""
 
     def build(self) -> OpenSCADObject:
         """Build and return the OpenSCAD model for this part.
