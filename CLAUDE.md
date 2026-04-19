@@ -15,8 +15,8 @@ Parameterized 3D printing of parts using [SolidPython2](https://github.com/jeff-
 
 ```bash
 uv sync                                                  # install deps
-uv run python scripts/boilerplate.py                     # render example (MyCustomPart cube)
-uv run python scripts/boilerplate.py --help              # show available parameters
+uv run python scripts/lamp_side_panel.py                 # render example part
+uv run python scripts/lamp_side_panel.py --help          # show available parameters
 uv run pytest                                            # run all tests
 uv run ruff check . && uv run ruff format .              # lint + format
 uv run mypy src/                                         # type check
@@ -26,7 +26,7 @@ uv run mypy src/                                         # type check
 
 The expected pattern for SolidPython2 projects:
 
-- `scripts/<my_part>.py` — each custom part is a self-contained script; copy from `scripts/boilerplate.py`
+- `scripts/<my_part>.py` — each custom part is a self-contained script; copy from an existing script such as `scripts/lamp_side_panel.py`
 - Parameters are `@dataclass` fields on a `PyStlPart` subclass; every field becomes a CLI flag automatically
 - `build() -> OpenSCADObject` is the method subclasses implement; the inherited `render(output_dir)` writes `.scad` and (if `openscad` is in PATH) `.stl`
 - `MyCustomPart.build()` typically composes reusable sub-parts from `src/pystl/library/`
@@ -38,10 +38,9 @@ The expected pattern for SolidPython2 projects:
 
 ### Adding a Custom Part Script
 
-1. Copy `scripts/boilerplate.py` to `scripts/<my_part>.py`
-2. Rename `MyCustomPart`, implement `build()` (composing library sub-parts as needed), and extend argparse in `main()` if required
+1. Copy an existing script (for example `scripts/lamp_side_panel.py`) to `scripts/<my_part>.py`
+2. Rename the part class, implement `build()` (composing library sub-parts as needed), and extend argparse in `main()` if required
 3. Run `uv run python scripts/<my_part>.py` to render
-4. Run `uv run python scripts/test_library_part.py --part <ClassName>` to run a quick render smoke-test
 
 ## Development guidelines for python-based projects
 

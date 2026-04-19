@@ -1,11 +1,15 @@
 """Clamp for left or right turn signal, mounted on front fork"""
 
+# Render: $ uv run python scripts/turn_signal_clamp.py
+# Print two copies, mount one upside down.
+
 import argparse
 import math
 from solid2 import cube, cylinder
 from solid2.core.object_base import OpenSCADObject
 from pystl.utils import write_model, setup_logging
 import pystl.library.hex_nuts as hex_nuts
+
 
 def _make_tab(
     outer_diameter: float,
@@ -16,61 +20,65 @@ def _make_tab(
     tab_offset: float,
     tab_gap: float,
     is_front: bool,
+    inset_nut_size: str,
     inset_side: str,
     inset_depth: float,
-    fn: int
-    ):
+    fn: int,
+):
     outer_radius = outer_diameter / 2
-    end_cap_radius = height/2
+    end_cap_radius = height / 2
     mirror = -1 if is_front else 1
 
     # create a rectangular prism for the mounting tab.
-    l1 = tab_length + outer_radius     # overall length
-    l2 = l1 - end_cap_radius           # less endcap
+    l1 = tab_length + outer_radius  # overall length
+    l2 = l1 - end_cap_radius  # less endcap
     tab = cube([l2, tab_width, height], center=True)
-    tab = tab.translate([mirror * l2/2, tab_offset, 0])
-    end_cap = cylinder(
-        h=tab_width, r=end_cap_radius, center=True, _fn=fn
-    )
+    tab = tab.translate([mirror * l2 / 2, tab_offset, 0])
+    end_cap = cylinder(h=tab_width, r=end_cap_radius, center=True, _fn=fn)
     end_cap = end_cap.rotate(90, 0, 0)
     end_cap = end_cap.translate([mirror * l2, tab_offset, 0])
 
-    bolt_hole = cylinder(
-        h=tab_width + 1, r=bolt_hole_diameter / 2, _fn=fn, center=True
-    )
+    bolt_hole = cylinder(h=tab_width + 1, r=bolt_hole_diameter / 2, _fn=fn, center=True)
     bolt_hole = bolt_hole.rotate(90, 0, 0)
     bolt_hole = bolt_hole.translate([mirror * l2, tab_offset, 0])
 
-    nut = hex_nuts.get('M4')
+    nut = hex_nuts.get(inset_nut_size)
     nut_inset_depth = inset_depth
-    nut_inset = cylinder(
-        h=nut_inset_depth * 2, r=nut.inset_radius, _fn=6, center=True
-    )
+    nut_inset = cylinder(h=nut_inset_depth * 2, r=nut.inset_radius, _fn=6, center=True)
     nut_inset = nut_inset.rotate(90, 0, 0)
-    y_off = tab_width/2 if inset_side == 'left' else -tab_width/2
+    y_off = tab_width / 2 if inset_side == "left" else -tab_width / 2
     # need to fix y offset here...
     nut_inset = nut_inset.translate([mirror * l2, y_off + tab_offset, 0])
 
-    split_plane = cube([l1, tab_gap, height+1], center=True)
-    split_plane = split_plane.translate([mirror * l1/2, tab_offset, 0])
+    split_plane = cube([l1, tab_gap, height + 1], center=True)
+    split_plane = split_plane.translate([mirror * l1 / 2, tab_offset, 0])
 
     return (tab, end_cap, bolt_hole, nut_inset, split_plane)
 
+
+YELNATS_FORK_UPPER_DIAMETER = 45
+YELNATS_FORK_LOWER_DIAMETER = 48
+CLAMP_THICKNESS = 5
+CLAMP_HEIGHT = 20
+TURN_SIGNAL_BOLT_DIAMETER = 10.1
+
+
 def build_turn_signal_clamp(
-    inner_diameter: float = 48,
-    outer_diameter: float = 58,
-    height: float = 15,
+    inner_diameter: float = YELNATS_FORK_UPPER_DIAMETER,
+    outer_diameter: float = YELNATS_FORK_UPPER_DIAMETER + CLAMP_THICKNESS * 2,
+    height: float = CLAMP_HEIGHT,
     front_tab_length: float = 22,
     front_tab_width: float = 10,
-    front_tab_offset: float = 0,
-    front_tab_gap: float = 1.0,
-    front_bolt_hole_diameter: float = 10.2,
-    rear_tab_length: float = 12,
+    front_tab_offset: float = 3,
+    front_tab_gap: float = 3.0,  # must match turn_signal_bolt_diameter in lamp_frame
+    front_bolt_hole_diameter: float = TURN_SIGNAL_BOLT_DIAMETER,
+    rear_tab_length: float = 14,
     rear_tab_width: float = 10,
     rear_tab_offset: float = 0,
     rear_tab_gap: float = 1.0,
     rear_bolt_hole_diameter: float = 4.2,
-    inset_side: str = 'left',
+    inset_nut_size: str = "M4",
+    inset_side: str = "left",
     inset_depth: float = 1.0,
     fn: int = 128,
 ) -> OpenSCADObject:
@@ -92,15 +100,15 @@ def build_turn_signal_clamp(
         rear_tab_width: width of the rear mounting tab
         rear_tab_offset: offset from center
         rear_tab_gap: width of the split between left and right halves
+        inset_nut_size: name of nut size, e.g. "M4"
         inset_side: left or right (determines side of nut inset)
+        inset_depth: how deep nut is inset into clamp
         fn: number of polygon sides for cylinders
     """
     outer = cylinder(h=height, r=outer_diameter / 2, center=True, _fn=fn)
-    inner = cylinder(
-        h=height + 1, r=inner_diameter / 2, center=True, _fn=fn
-    )
+    inner = cylinder(h=height + 1, r=inner_diameter / 2, center=True, _fn=fn)
 
-    front_tab, front_end_cap, front_bolt_hole, front_nut_inset, front_split_plane = _make_tab(
+    front_tab, front_end_cap, front_bolt_hole, _, front_split_plane = _make_tab(
         outer_diameter,
         height,
         front_bolt_hole_diameter,
@@ -109,50 +117,54 @@ def build_turn_signal_clamp(
         front_tab_offset,
         front_tab_gap,
         True,
+        inset_nut_size,
         inset_side,
         inset_depth,
-        fn)
+        fn,
+    )
 
-    rear_tab, rear_end_cap, rear_bolt_hole, rear_nut_inset, rear_split_plane = _make_tab(
-        outer_diameter,
-        height,
-        rear_bolt_hole_diameter,
-        rear_tab_length,
-        rear_tab_width,
-        rear_tab_offset,
-        rear_tab_gap,
-        False,
-        inset_side,
-        inset_depth,
-        fn)
+    rear_tab, rear_end_cap, rear_bolt_hole, rear_nut_inset, rear_split_plane = (
+        _make_tab(
+            outer_diameter,
+            height,
+            rear_bolt_hole_diameter,
+            rear_tab_length,
+            rear_tab_width,
+            rear_tab_offset,
+            rear_tab_gap,
+            False,
+            inset_nut_size,
+            inset_side,
+            inset_depth,
+            fn,
+        )
+    )
 
-    model = (
-        (outer + front_tab + front_end_cap + rear_tab + rear_end_cap)
-        - (inner + front_split_plane + front_bolt_hole + front_nut_inset + rear_split_plane + rear_bolt_hole + rear_nut_inset)
+    model = (outer + front_tab + front_end_cap + rear_tab + rear_end_cap) - (
+        inner
+        + front_split_plane
+        + front_bolt_hole
+        + rear_split_plane
+        + rear_bolt_hole
+        + rear_nut_inset
     )
 
     return model
 
+
 def main() -> None:
-    """render offset lamp clamp."""
-    tab_length = 24 + 4
-    lower_tab_length = 24 - 4
+    """render turn signal clamp."""
     setup_logging()
     parser = argparse.ArgumentParser(
         description="Render clamps to hold turn signals to front fork."
     )
-    parser.add_argument(
-        '--fork-side',
-        required=True,
-        choices=['left', 'right'],
-        help="which fork tube the clamp goes on"
-    )
     args = parser.parse_args()
     model = build_turn_signal_clamp(
-        inset_side=args.fork_side,
+        inset_side="right",
         inset_depth=2,
-        )
-    write_model(model, f"output/{args.fork_side}_turn_signal_clamp_01")
+    )
+    write_model(model, f"output/turn_signal_clamp_02")
+
 
 if __name__ == "__main__":
     main()

@@ -6,15 +6,9 @@ Library parts are defined as Python dataclasses with a `build()` method that
 returns an `OpenSCADObject`. Library parts can be composed together or combined
 with custom code before being emitted as a `.scad` and/or `.stl` file.
 
-The library comes with a few pre-defined parts.  If you find yourself repeatedly
-using custom code, you can create a new Python dataclass for future use.
-
-The usual workflow is to:
-* copy `scripts/boilerplate.py` to `scripts/my_custom_part.py`
-* Edit `scripts/my_custom_part.py`, implementing `build()` and adding
-argparse parameters for your part as needed
-* run `uv run python scripts/my_custom_part.py` with appropriate command line 
-arguments to generate .scad and .stl files
+The usual workflow is to add a script under `scripts/` that subclasses
+`PyStlPart` (see `scripts/lamp_side_panel.py`) or calls `write_model()` for
+ad-hoc geometry (see `scripts/lamp_clamp.py`), then run it with `uv run`.
 
 ## One-time setup
 
@@ -23,84 +17,48 @@ Requires Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
 ```bash
 git clone <repo>
 cd pystl
-uv sync           # initilize the required packagers
+uv sync
 ```
 
-STL export requires the [OpenSCAD](https://openscad.org/downloads.html) CLI to 
-be in `PATH`.  
+STL export requires the [OpenSCAD](https://openscad.org/downloads.html) CLI to
+be in `PATH`.
 
 ## Render parts
 
 ```bash
-# Render with defaults
-uv run python scripts/example_bracket.py
+# PyStlPart-based script (defaults + help)
+uv run python scripts/lamp_side_panel.py
+uv run python scripts/lamp_side_panel.py --help
 
-# Render with parameter overrides
-uv run python scripts/example_bracket.py --height=20 --width=25
-
-# Write output to a custom directory
-uv run python scripts/example_bracket.py --outdir /tmp/prints
-
-# See all available parameters
-uv run python scripts/example_bracket.py --help
+# Custom output directory
+uv run python scripts/lamp_side_panel.py --outdir /tmp/prints
 ```
 
-By default, output files land in `output/` (gitignored):
-
-```
-output/
-  ExampleBracket.scad   ← OpenSCAD source, inspect or tweak in the OpenSCAD GUI
-  ExampleBracket.stl    ← ready to slice (requires openscad in PATH)
-```
-
-## Adding a new part
-
-1. Copy the boilerplate:
-
-   ```bash
-   cp scripts/boilerplate.py scripts/my_custom_part.py
-   ```
-
-2. Edit `scripts/my_custom_part.py`:
-   - Rename `MyCustomPart` to your class name (update the argparse description too)
-   - Add `@dataclass` fields for your parameters (each becomes a CLI flag automatically)
-   - Implement `build()` — compose library parts from `src/pystl/library/` and/or raw
-     SolidPython2 primitives into your final assembly
-   - Add extra argparse flags in `main()` if needed beyond the auto-generated ones
-
-3. Render and verify:
-
-   ```bash
-   uv run python scripts/my_custom_part.py
-   uv run python scripts/my_custom_part.py --help   # inspect available flags
-   ```
-
-> **Tip:** A `scripts/new_part.py` generator is planned that will scaffold the boilerplate
-> automatically: `uv run python scripts/new_part.py MyCustomPart`
+By default, output files land in `output/` (gitignored). Exact filenames depend
+on the part class or script.
 
 ## Viewing parts
 
-Install [OpenSCAD](https://openscad.org/downloads.html) to inspect or tweak the `.scad` source interactively, and to enable STL export.
+Install [OpenSCAD](https://openscad.org/downloads.html) to inspect or tweak the
+`.scad` source interactively, and to enable STL export.
+
+**Windows** (PowerShell)
+
+```powershell
+& "C:\Program Files\OpenSCAD\openscad.exe" output\<YourPart>.scad
+```
 
 **macOS**
+
 ```bash
-open output/ExampleBracket.scad          # opens in OpenSCAD if associated
-# or, explicitly:
-/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD output/ExampleBracket.scad
+open output/<YourPart>.scad
 ```
 
 **Linux**
+
 ```bash
-openscad output/ExampleBracket.scad
+openscad output/<YourPart>.scad
 ```
-
-**Windows** (PowerShell)
-```powershell
-& "C:\Program Files\OpenSCAD\openscad.exe" output\ExampleBracket.scad
-```
-
-The `.stl` files can be viewed in any .stl viewer and opened directly in any 
-slicer (PrusaSlicer, Bambu Studio, Cura, etc.).
 
 ## SolidPython2 API reference
 
@@ -113,9 +71,9 @@ slicer (PrusaSlicer, Bambu Studio, Cura, etc.).
 ## Development
 
 ```bash
-uv run pytest                        # tests
-uv run ruff check . && uv run ruff format .   # lint + format
-uv run mypy src/                     # type check
+uv run pytest
+uv run ruff check . && uv run ruff format .
+uv run mypy src/
 ```
 
 ## Project structure
@@ -123,17 +81,12 @@ uv run mypy src/                     # type check
 ```
 src/pystl/
   py_stl_base.py   — PyStlPart base class (build + render)
-  cli.py           — shared argparse/logging helpers used by all scripts
+  cli.py           — shared argparse/logging helpers used by scripts
+  utils.py         — write_model, logging setup
   library/         — reusable sub-parts
-    __init__.py
-    general_pipe_clamp.py
-    filleted_rect.py
-    …
-scripts/
-  boilerplate.py           — template: copy this to create a new part script
-  example_bracket.py       — example custom part
-  new_part.py              — (planned) scaffold a new part script from boilerplate
-  …
+scripts/           — one script per printable assembly / experiment
 tests/             — pytest suite
 output/            — generated .scad and .stl (gitignored)
 ```
+
+See `CLAUDE.md` for conventions and tooling details.
